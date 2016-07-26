@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+    <db:mysql-config name="MySQL_Configuration" host="localhost" port="3306" user="root" password="eaisystems" database="training" doc:name="MySQL Configuration"/>
+    <http:listener-config name="HTTP_Listener_Configuration" host="localhost" port="9095" basePath="/employee" doc:name="HTTP Listener Configuration"/>
+    <smtp:gmail-connector name="Gmail" contentType="text/plain" validateConnections="true" doc:name="Gmail"/>
+    <http:request-config name="HTTP_Request_Configuration" host="localhost" port="9095" doc:name="HTTP Request Configuration"/>
+    <file:connector name="File" autoDelete="true" outputAppend="true" streaming="true" validateConnections="true" doc:name="File"/>
+    <smtp:connector name="SMTP" contentType="text/plain" validateConnections="true" doc:name="SMTP"/>
+    <flow name="InsertEmployee">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/insert" doc:name="HTTP"/>
+        <set-variable variableName="id" value="#[message.inboundProperties.'http.query.params'.id]" doc:name="id"/>
+        <set-variable variableName="fname" value="#[message.inboundProperties.'http.query.params'.fname]" doc:name="fname"/>
+        <set-variable variableName="lname" value="#[message.inboundProperties.'http.query.params'.lname]" doc:name="lname"/>
+        <set-variable variableName="empid" value="#[message.inboundProperties.'http.query.params'.empid]" doc:name="empid"/>
+        <db:insert config-ref="MySQL_Configuration" doc:name="Database">
+            <db:parameterized-query><![CDATA[insert into employee(first_name,last_name,emp_id) values(#[message.inboundProperties.'http.query.params'.fname],#[message.inboundProperties.'http.query.params'.lname],#[message.inboundProperties.'http.query.params'.empid]);]]></db:parameterized-query>
+        </db:insert>
+        <set-payload value="#[ flowVars.fname + flowVars.lname + flowVars.empid]" doc:name="Set Payload"/>
+        <object-to-string-transformer doc:name="Object to String"/>
+        <logger message="#[message]" level="INFO" doc:name="Logger"/>
+    </flow>
+    <flow name="UpdateEmployee">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/update" doc:name="HTTP"/>
+        <set-variable variableName="id" value="#[message.inboundProperties.'http.query.params'.id]" doc:name="id"/>
+        <set-variable variableName="fname" value="#[message.inboundProperties.'http.query.params'.fname]" doc:name="fname"/>
+        <set-variable variableName="lname" value="#[message.inboundProperties.'http.query.params'.lname]" doc:name="lname"/>
+        <set-variable variableName="empid" value="#[message.inboundProperties.'http.query.params'.empid]" doc:name="empid"/>
+        <db:update config-ref="MySQL_Configuration" doc:name="Database">
+            <db:parameterized-query><![CDATA[update employee
+set
+first_name= #[message.inboundProperties.'http.query.params'.fname],
+last_name= #[message.inboundProperties.'http.query.params'.lname],
+emp_id= #[message.inboundProperties.'http.query.params'.empid]
+where
+id= #[message.inboundProperties.'http.query.params'.id];]]></db:parameterized-query>
+        </db:update>
+        <set-payload value="#[ flowVars.fname + flowVars.lname + flowVars.empid]" doc:name="Set Payload"/>
+        <object-to-string-transformer doc:name="Object to String"/>
+        <logger message="#[message]" level="INFO" doc:name="Logger"/>
+    </flow>
+    <flow name="DeleteEmployee">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/delete" doc:name="HTTP"/>
+        <set-variable variableName="id" value="#[message.inboundProperties.'http.query.params'.id]" doc:name="id"/>
+        <set-variable variableName="fname" value="#[message.inboundProperties.'http.query.params'.fname]" doc:name="fname"/>
+        <set-variable variableName="lname" value="#[message.inboundProperties.'http.query.params'.lname]" doc:name="lname"/>
+        <set-variable variableName="emp_id" value="#[message.inboundProperties.'http.query.params'.empid]" doc:name="emp_id"/>
+        <db:delete config-ref="MySQL_Configuration" doc:name="Database">
+            <db:parameterized-query><![CDATA[delete from employee
+where
+id= #[message.inboundProperties.'http.query.params'.id];]]></db:parameterized-query>
+        </db:delete>
+        <set-payload value="#[ flowVars.fname + flowVars.lname + flowVars.empid]" doc:name="Set Payload"/>
+        <object-to-string-transformer doc:name="Object to String"/>
+        <logger level="INFO" doc:name="Logger" message="#[message]"/>
+    </flow>
+    <flow name="SelectEmployee">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/" doc:name="HTTP"/>
+        <set-variable variableName="id" value="#[message.inboundProperties.'http.query.params'.id]" doc:name="id"/>
+        <set-variable variableName="fname" value="#[message.inboundProperties.'http.query.params'.fname]" doc:name="fname"/>
+        <set-variable variableName="lname" value="#[message.inboundProperties.'http.query.params'.lname]" doc:name="lname"/>
+        <set-variable variableName="emp_id" value="#[message.inboundProperties.'http.query.params'.empid]" doc:name="emp_id"/>
+        <db:select config-ref="MySQL_Configuration" doc:name="Database">
+            <db:parameterized-query><![CDATA[select * from employee;]]></db:parameterized-query>
+        </db:select>
+        <object-to-string-transformer doc:name="Object to String"/>
+        <logger level="INFO" doc:name="Logger" message="#[payload]"/>
+        <file:outbound-endpoint path="D:\Users\One\Desktop\PAC" outputPattern="ABC.txt" connector-ref="File" responseTimeout="10000" doc:name="File"/>
+        <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="eaisystems19@gmail.com" password="eaisystems" connector-ref="Gmail" to="pushkar.a.chavan@gmail.com" from="eaitest19@gmail.com" subject="message" responseTimeout="10000" doc:name="SMTP"/>
+    </flow>
+    <rollback-exception-strategy name="employeeGlobal_Rollback_Exception_Strategy"/>
+</mule>

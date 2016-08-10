@@ -1,0 +1,16 @@
+{
+    "inputMessageMetadata": {
+        "messagePayload": {
+            "connectorName": "#_custom_mule_metadata_type_#",
+            "typeId": "db"
+        }
+    },
+    "outputMessageMetadata": {
+        "messagePayload": {
+            "connectorName": "ZohoCrm__Configuration",
+            "typeId": "Contacts"
+        }
+    },
+    "id": "eca35793-96ad-4fcb-9d03-735f7f452843",
+    "version": "5.2.0.0"
+}

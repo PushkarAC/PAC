@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:zoho-crm="http://www.mulesoft.org/schema/mule/zoho-crm" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/zoho-crm http://www.mulesoft.org/schema/mule/zoho-crm/current/mule-zoho-crm.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="localhost" port="9000" doc:name="HTTP Listener Configuration"/>
+    <zoho-crm:config name="ZohoCrm__Configuration" authtoken="07632f7e297d02cb518fe88a8f754cd6" doc:name="ZohoCrm: Configuration"/>
+    <db:mysql-config name="MySQL_Configuration" host="localhost" port="3306" user="root" password="eaisystems" database="training" doc:name="MySQL Configuration"/>
+    <file:connector name="File" autoDelete="true" streaming="true" validateConnections="true" doc:name="File"/>
+    <flow name="zohoFlow" processingStrategy="synchronous">
+        <poll doc:name="Poll">
+            <db:select config-ref="MySQL_Configuration" doc:name="Database">
+                <db:parameterized-query><![CDATA[SELECT first_name,last_name,email FROM contact]]></db:parameterized-query>
+            </db:select>
+        </poll>
+        <foreach doc:name="For Each">
+            <dw:transform-message metadata:id="eca35793-96ad-4fcb-9d03-735f7f452843" doc:name="Transform Message">
+                <dw:input-payload doc:sample="sample_data\db.dwl"/>
+                <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+	"First Name": payload.first_name,
+	"Last Name": payload.last_name,
+	Email: payload.email
+}]]></dw:set-payload>
+            </dw:transform-message>
+            <file:outbound-endpoint path="D:\Users\One\Desktop\PAC\New folder" outputPattern="cont.txt" connector-ref="File" responseTimeout="10000" doc:name="File"/>
+            <enricher doc:name="Message Enricher">
+                <zoho-crm:search-records config-ref="ZohoCrm__Configuration" module="Contacts" criteria="#[payload.Email]" selectColumns="3" doc:name="ZohoCrm"/>
+                <enrich source="#[payload]&gt;0" target="#[recordVars['exists']]"/>
+                <enrich source="#[payload]" target="#[recordVars['dbRecord']]"/>
+            </enricher>
+        </foreach>
+        <logger message="complt" level="INFO" doc:name="Logger"/>
+    </flow>
+</mule>
